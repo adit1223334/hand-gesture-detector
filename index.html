@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hand Gesture Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+      .container {
+        background: white;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 900px;
+        width: 100%;
+      }
+      h1 {
+        text-align: center;
+        color: #667eea;
+        margin-bottom: 10px;
+        font-size: 2em;
+      }
+      .subtitle {
+        text-align: center;
+        color: #666;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+      }
+      .video-container {
+        position: relative;
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto 20px;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+      #videoElement {
+        width: 100%;
+        height: auto;
+        display: block;
+        transform: scaleX(-1);
+      }
+      #canvasElement {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: scaleX(-1);
+      }
+      .gesture-display {
+        text-align: center;
+        padding: 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        margin-bottom: 20px;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .gesture-icon {
+        font-size: 4em;
+        margin-bottom: 10px;
+      }
+      .gesture-name {
+        color: white;
+        font-size: 2em;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .gesture-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+      .gesture-item {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .gesture-item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+      .gesture-item-icon {
+        font-size: 2em;
+        margin-bottom: 8px;
+      }
+      .gesture-item-name {
+        font-size: 0.9em;
+        color: #333;
+        font-weight: 600;
+      }
+      .status {
+        text-align: center;
+        padding: 15px;
+        background: #e3f2fd;
+        border-radius: 10px;
+        color: #1976d2;
+        margin-bottom: 20px;
+      }
+      .loading {
+        background: #fff3e0;
+        color: #f57c00;
+      }
+      .error {
+        background: #ffebee;
+        color: #c62828;
+      }
+      button {
+        width: 100%;
+        padding: 15px;
+        font-size: 1.1em;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-weight: 600;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🖐️ Hand Gesture Detector</h1>
+      <p class="subtitle">Deteksi gerakan tangan secara real-time</p>
+
+      <div id="status" class="status loading">
+        Memuat model AI... Mohon tunggu sebentar
+      </div>
+
+      <div class="gesture-display">
+        <div class="gesture-icon" id="gestureIcon">👋</div>
+        <div class="gesture-name" id="gestureName">Tunjukkan Gestur Anda</div>
+      </div>
+
+      <div class="video-container">
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="canvasElement"></canvas>
+      </div>
+
+      <button id="startButton">Mulai Deteksi</button>
+
+      <div class="gesture-list">
+        <div class="gesture-item">
+          <div class="gesture-item-icon">✋</div>
+          <div class="gesture-item-name">Help</div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-item-icon">🤟</div>
+          <div class="gesture-item-name">I Love You</div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-item-icon">✌️</div>
+          <div class="gesture-item-name">Peace</div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-item-icon">👍</div>
+          <div class="gesture-item-name">Thumbs Up</div>
+        </div>
+        <div class="gesture-item">
+          <div class="gesture-item-icon">👎</div>
+          <div class="gesture-item-name">Thumbs Down</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      const videoElement = document.getElementById("videoElement");
+      const canvasElement = document.getElementById("canvasElement");
+      const canvasCtx = canvasElement.getContext("2d");
+      const gestureIcon = document.getElementById("gestureIcon");
+      const gestureName = document.getElementById("gestureName");
+      const statusDiv = document.getElementById("status");
+      const startButton = document.getElementById("startButton");
+
+      let hands;
+      let camera;
+      let isRunning = false;
+
+      // Fungsi untuk mendeteksi apakah jari terangkat (lebih sensitif)
+      function isFingerExtended(
+        landmarks,
+        fingerTip,
+        fingerDip,
+        fingerPip,
+        fingerMcp
+      ) {
+        const tipY = landmarks[fingerTip].y;
+        const pipY = landmarks[fingerPip].y;
+        const mcpY = landmarks[fingerMcp].y;
+
+        // Lebih toleran: cukup tip lebih tinggi dari pip dan mcp
+        return tipY < pipY - 0.03 && tipY < mcpY;
+      }
+
+      // Fungsi untuk mendeteksi thumbs up/down
+      function isThumbExtended(landmarks, direction = "up") {
+        const thumbTip = landmarks[4];
+        const thumbIp = landmarks[3];
+        const thumbMcp = landmarks[2];
+        const indexMcp = landmarks[5];
+
+        if (direction === "up") {
+          return thumbTip.y < thumbIp.y && thumbTip.y < thumbMcp.y;
+        } else {
+          return thumbTip.y > thumbIp.y && thumbTip.y > thumbMcp.y;
+        }
+      }
+
+      // Fungsi khusus untuk mendeteksi jempol terangkat horizontal/vertikal
+      function isThumbOpen(landmarks) {
+        const thumbTip = landmarks[4];
+        const thumbIp = landmarks[3];
+        const thumbMcp = landmarks[2];
+        const wrist = landmarks[0];
+
+        // Cek jarak horizontal (x) dan vertikal (y)
+        const distanceX = Math.abs(thumbTip.x - thumbMcp.x);
+        const distanceY = Math.abs(thumbTip.y - wrist.y);
+
+        // Jempol dianggap terbuka jika ada jarak signifikan dari telapak
+        return distanceX > 0.08 || distanceY > 0.15;
+      }
+
+      // Fungsi untuk mengklasifikasikan gesture
+      function classifyGesture(landmarks) {
+        // Deteksi jari yang terangkat
+        const thumbOpen = isThumbOpen(landmarks);
+        const thumbUp = isThumbExtended(landmarks, "up");
+        const thumbDown = isThumbExtended(landmarks, "down");
+        const indexUp = isFingerExtended(landmarks, 8, 7, 6, 5);
+        const middleUp = isFingerExtended(landmarks, 12, 11, 10, 9);
+        const ringUp = isFingerExtended(landmarks, 16, 15, 14, 13);
+        const pinkyUp = isFingerExtended(landmarks, 20, 19, 18, 17);
+
+        // Hitung jari yang terangkat (selain jempol)
+        const fingersUp = [indexUp, middleUp, ringUp, pinkyUp].filter(
+          Boolean
+        ).length;
+
+        // HELP - Semua jari terbuka (telapak terbuka)
+        // Lebih sensitif: cukup 4 jari terangkat dan jempol terbuka
+        if (fingersUp >= 4 && thumbOpen) {
+          return { name: "HELP", icon: "✋" };
+        }
+
+        // I LOVE YOU - Jempol, telunjuk, dan kelingking terangkat
+        // Lebih sensitif: tolerate jika jari tengah/manis sedikit terangkat
+        if (thumbOpen && indexUp && pinkyUp && !middleUp && !ringUp) {
+          return { name: "I LOVE YOU", icon: "🤟" };
+        }
+
+        // Alternatif I LOVE YOU jika jempol ke samping
+        if (indexUp && pinkyUp && !middleUp && !ringUp) {
+          const thumbTipX = landmarks[4].x;
+          const indexMcpX = landmarks[5].x;
+          if (Math.abs(thumbTipX - indexMcpX) > 0.1) {
+            return { name: "I LOVE YOU", icon: "🤟" };
+          }
+        }
+
+        // PEACE - Telunjuk dan jari tengah terangkat
+        if (indexUp && middleUp && !ringUp && !pinkyUp) {
+          return { name: "PEACE", icon: "✌️" };
+        }
+
+        // THUMBS UP - Hanya jempol terangkat ke atas
+        if (thumbUp && fingersUp === 0) {
+          return { name: "THUMBS UP", icon: "👍" };
+        }
+
+        // THUMBS DOWN - Hanya jempol terangkat ke bawah
+        if (thumbDown && fingersUp === 0) {
+          return { name: "THUMBS DOWN", icon: "👎" };
+        }
+
+        return null;
+      }
+
+      // Fungsi callback untuk memproses hasil deteksi
+      function onResults(results) {
+        canvasElement.width = videoElement.videoWidth;
+        canvasElement.height = videoElement.videoHeight;
+
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+        if (
+          results.multiHandLandmarks &&
+          results.multiHandLandmarks.length > 0
+        ) {
+          for (const landmarks of results.multiHandLandmarks) {
+            // Gambar landmark tangan
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+              color: "#00FF00",
+              lineWidth: 3,
+            });
+            drawLandmarks(canvasCtx, landmarks, {
+              color: "#FF0000",
+              lineWidth: 1,
+              radius: 3,
+            });
+
+            // Klasifikasikan gesture
+            const gesture = classifyGesture(landmarks);
+            if (gesture) {
+              gestureIcon.textContent = gesture.icon;
+              gestureName.textContent = gesture.name;
+            } else {
+              gestureIcon.textContent = "🖐️";
+              gestureName.textContent = "Tidak Terdeteksi";
+            }
+          }
+        } else {
+          gestureIcon.textContent = "👋";
+          gestureName.textContent = "Tunjukkan Tangan Anda";
+        }
+
+        canvasCtx.restore();
+      }
+
+      // Inisialisasi MediaPipe Hands
+      async function initializeHands() {
+        hands = new Hands({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+          },
+        });
+
+        hands.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6,
+        });
+
+        hands.onResults(onResults);
+
+        statusDiv.textContent = 'Model siap! Klik "Mulai Deteksi"';
+        statusDiv.className = "status";
+        startButton.disabled = false;
+      }
+
+      // Mulai kamera
+      async function startCamera() {
+        if (isRunning) {
+          camera.stop();
+          isRunning = false;
+          startButton.textContent = "Mulai Deteksi";
+          statusDiv.textContent = "Deteksi dihentikan";
+          return;
+        }
+
+        try {
+          camera = new Camera(videoElement, {
+            onFrame: async () => {
+              await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480,
+          });
+
+          await camera.start();
+          isRunning = true;
+          startButton.textContent = "Hentikan Deteksi";
+          statusDiv.textContent = "🎥 Deteksi aktif - Tunjukkan gesture Anda!";
+          statusDiv.className = "status";
+        } catch (error) {
+          statusDiv.textContent = "Error: " + error.message;
+          statusDiv.className = "status error";
+        }
+      }
+
+      // Event listener
+      startButton.addEventListener("click", startCamera);
+
+      // Inisialisasi saat halaman dimuat
+      initializeHands();
+    </script>
+  </body>
+</html>
